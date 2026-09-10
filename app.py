@@ -74,4 +74,4 @@ if st.session_state.question:
         elif "```" in html_code:
             html_code = html_code.split("```").split("```").strip()
             
-        components.html(html_code, height=300)
+        components.html(html_code, height=450)
