@@ -9,7 +9,7 @@ else:
     st.error("Missing Gemini API Key. Please add it to your Streamlit Secrets Management dashboard.")
     st.stop()
 
-# Configuration for 2026 Frontier Models
+# Configuration for the latest 2026 Frontier Models
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(page_title="Agentic AI 3D Kids Lab", layout="centered")
@@ -22,7 +22,13 @@ if 'question' not in st.session_state:
     st.session_state.opt_b = ""
     st.session_state.correct_answer = None
 
-topic = st.selectbox("Select a Science Topic:", ["Water Physics", "Magnets", "Gravity", "Solar System", "Plant Biology", "Human Anatomy", "Electricity"])
+# Smart Feature: Let users choose from list OR type their own topic!
+select_topic = st.selectbox("Choose a preset topic:", ["Water Physics", "Magnets", "Gravity", "Solar System", "Plant Biology", "Human Anatomy", "Electricity", "Other (Type below)"])
+
+if select_topic == "Other (Type below)":
+    topic = st.text_input("Type any Science Topic you want (e.g., Black Holes, Dinosaurs, Volcanoes):", "Volcanoes")
+else:
+    topic = select_topic
 
 if st.button("🚀 Ask a New Question"):
     model = genai.GenerativeModel('gemini-3.6-flash')
@@ -61,22 +67,17 @@ if st.session_state.question:
         st.write("🎬 AI Agent is rendering your interactive 3D simulation...")
         model = genai.GenerativeModel('gemini-3.6-flash')
         
-        # Powering up the prompt with Three.js engine capabilities
         animation_prompt = f"""
         Generate a single HTML page that imports the Three.js library via CDN script to render a complete, beautiful interactive 3D physics animation showing the realistic scientific outcome of this choice: '{user_choice}' under the topic '{topic}'.
         Include OrbitControls so the user can rotate the 3D scene using their mouse. Add proper 3D lighting (Ambient and Directional). 
-        Example: If a coin is dropped in water, render a 3D translucent blue box container (water) and a golden 3D cylinder/sphere (coin) moving smoothly downwards to the bottom.
         Make the colors bright, vivid, and cartoonish for a 10-year-old child.
         Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
         """
         html_code = model.generate_content(animation_prompt).text
         
         if "```html" in html_code:
-            html_code = html_code.split("```html")[-1].split("```")[0].strip()
+            html_code = html_code.split("```html")[-1].split("```").strip()
         elif "```" in html_code:
-            html_code = html_code.split("```")[1].split("```")[0].strip()
+            html_code = html_code.split("```").split("```").strip()
             
-        # Expanded box height to comfortably render the 3D canvas viewport without cuts
         components.html(html_code, height=500)
-
-    
