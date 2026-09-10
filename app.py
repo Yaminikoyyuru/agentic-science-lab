@@ -75,9 +75,12 @@ if st.session_state.question:
         """
         html_code = model.generate_content(animation_prompt).text
         
+        # Robust 2026 clean parsing logic to prevent List AttributeError bugs
         if "```html" in html_code:
-            html_code = html_code.split("```html")[-1].split("```").strip()
+            html_code = html_code.split("```html")[1].split("```")[0].strip()
         elif "```" in html_code:
-            html_code = html_code.split("```").split("```").strip()
+            html_code = html_code.split("```")[1].split("```")[0].strip()
+        else:
+            html_code = html_code.strip()
             
         components.html(html_code, height=500)
