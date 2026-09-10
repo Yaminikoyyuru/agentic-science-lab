@@ -9,7 +9,7 @@ else:
     st.error("Missing Gemini API Key. Please add it to your Streamlit Secrets Management dashboard.")
     st.stop()
 
-# Correct configuration for 2026 Frontier Models
+# Configuration for 2026 Frontier Models
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(page_title="Agentic AI Kids Lab", layout="centered")
@@ -22,11 +22,11 @@ if 'question' not in st.session_state:
     st.session_state.opt_b = ""
     st.session_state.correct_answer = None
 
-topic = st.selectbox("Select a Science Topic:", ["Water Physics", "Magnets", "Gravity"])
+topic = st.selectbox("Select a Science Topic:", ["Water Physics", "Magnets", "Gravity", "Solar System", "Plant Biology", "Human Anatomy", "Electricity"])
 
 if st.button("🚀 Ask a New Question"):
-    # Using the updated 2026 generative workflow optimized for AQ keys
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Updated to the new stable workhorse model: gemini-2.5-flash
+    model = genai.GenerativeModel('gemini-2.5-flash')
     prompt = f"""
     Create a conceptual science question for a 10-year-old child about {topic}. 
     Provide the question, exactly 2 options (one right, one wrong), and specify which one is correct.
@@ -37,7 +37,6 @@ if st.button("🚀 Ask a New Question"):
     Correct: [Option A or Option B]
     """
     try:
-        # Fixed 2026 integration pipeline
         response = model.generate_content(prompt)
         lines = response.text.split('\n')
         for line in lines:
@@ -46,7 +45,7 @@ if st.button("🚀 Ask a New Question"):
             if line.startswith("Option B:"): st.session_state.opt_b = line.replace("Option B:", "").strip()
             if line.startswith("Correct:"): st.session_state.correct_answer = line.replace("Correct:", "").strip()
     except Exception as e:
-        st.error(f"Authentication Sync Error. Re-checking key pipeline. Details: {e}")
+        st.error(f"Sync Error. Details: {e}")
 
 if st.session_state.question:
     st.subheader(st.session_state.question)
@@ -61,7 +60,8 @@ if st.session_state.question:
             st.error("❌ Oops! Incorrect answer. But watch the live animation below to learn why!")
             
         st.write("🎬 AI Agent is creating your live simulation...")
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Updated to the new stable workhorse model here as well
+        model = genai.GenerativeModel('gemini-2.5-flash')
         animation_prompt = f"""
         Generate a single HTML page with inline CSS animations showing the physics outcome of this choice: '{user_choice}' under the topic '{topic}'.
         Example: If it is about putting a coin in water, show a clean blue box representing water and a gold circle representing a coin moving down to the bottom.
@@ -69,12 +69,9 @@ if st.session_state.question:
         """
         html_code = model.generate_content(animation_prompt).text
         
-        # Clean potential raw response wrappers safely for rendering
         if "```html" in html_code:
-            html_code = html_code.split("```html")[1].split("```")[0].strip()
+            html_code = html_code.split("```html")[-1].split("```")[0].strip()
         elif "```" in html_code:
             html_code = html_code.split("```")[1].split("```")[0].strip()
             
         components.html(html_code, height=300)
-
-
