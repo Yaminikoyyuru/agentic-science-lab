@@ -2,7 +2,7 @@
 
 An advanced, interactive 3D simulation science learning web platform engineered using Python, Streamlit, and powered by a Multi-Agent workflow using the latest **Gemini 3.6-Flash Frontier Model**.
 
-🔗 **Live Application Link:** [Click Here to Play the Game]([https://agentic-science-lab-l24p7ehnm9pdlkdprnwq5f.streamlit.app/])
+🔗 **Live Application Link:** [Click Here to Play the Game](https://agentic-science-lab-l24p7ehnm9pdlkdprnwq5f.streamlit.app/)
 
 ## 🚀 Key Architectural Features
 - **Multi-Agent Orchestration:** Deployed distinct AI agents sequentially. Agent 1 synthesizes dynamic science conceptual queries, while Agent 2 acts as a Generative UI compiler to produce 3D animation code on-the-fly.
