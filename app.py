@@ -9,7 +9,7 @@ else:
     st.error("Missing Gemini API Key. Please add it to your Streamlit Secrets Management dashboard.")
     st.stop()
 
-# Configuration for 2026 Frontier Models
+# Configuration for the latest 2026 Frontier Models
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(page_title="Agentic AI Kids Lab", layout="centered")
@@ -25,8 +25,8 @@ if 'question' not in st.session_state:
 topic = st.selectbox("Select a Science Topic:", ["Water Physics", "Magnets", "Gravity", "Solar System", "Plant Biology", "Human Anatomy", "Electricity"])
 
 if st.button("🚀 Ask a New Question"):
-    # Updated to the new stable workhorse model: gemini-2.5-flash
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    # Updated to the latest stable model: gemini-3.6-flash
+    model = genai.GenerativeModel('gemini-3.6-flash')
     prompt = f"""
     Create a conceptual science question for a 10-year-old child about {topic}. 
     Provide the question, exactly 2 options (one right, one wrong), and specify which one is correct.
@@ -60,8 +60,8 @@ if st.session_state.question:
             st.error("❌ Oops! Incorrect answer. But watch the live animation below to learn why!")
             
         st.write("🎬 AI Agent is creating your live simulation...")
-        # Updated to the new stable workhorse model here as well
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        # Updated to the latest stable model here as well
+        model = genai.GenerativeModel('gemini-3.6-flash')
         animation_prompt = f"""
         Generate a single HTML page with inline CSS animations showing the physics outcome of this choice: '{user_choice}' under the topic '{topic}'.
         Example: If it is about putting a coin in water, show a clean blue box representing water and a gold circle representing a coin moving down to the bottom.
@@ -70,8 +70,8 @@ if st.session_state.question:
         html_code = model.generate_content(animation_prompt).text
         
         if "```html" in html_code:
-            html_code = html_code.split("```html")[-1].split("```")[0].strip()
+            html_code = html_code.split("```html")[-1].split("```").strip()
         elif "```" in html_code:
-            html_code = html_code.split("```")[1].split("```")[0].strip()
+            html_code = html_code.split("```").split("```").strip()
             
         components.html(html_code, height=300)
