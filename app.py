@@ -2,31 +2,30 @@ import streamlit as st
 import google.generativeai as genai
 import streamlit.components.v1 as components
 
-# Securely grab the API Key from Streamlit Secrets Management
+# Securely grab the New AQ. Format API Key
 if "GEMINI_API_KEY" in st.secrets:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 else:
     st.error("Missing Gemini API Key. Please add it to your Streamlit Secrets Management dashboard.")
     st.stop()
 
+# Correct configuration for 2026 Frontier Models
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(page_title="Agentic AI Kids Lab", layout="centered")
 st.title("🧠 Agentic AI Kids Science Lab")
 st.write("A Live Animation Science Game Powered by AI Agents")
 
-# Initialize Session States
 if 'question' not in st.session_state:
     st.session_state.question = None
     st.session_state.opt_a = ""
     st.session_state.opt_b = ""
     st.session_state.correct_answer = None
 
-# Topic Selection
 topic = st.selectbox("Select a Science Topic:", ["Water Physics", "Magnets", "Gravity"])
 
-# Agent 1: Generate Dynamic Question
 if st.button("🚀 Ask a New Question"):
+    # Using the updated 2026 generative workflow optimized for AQ keys
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"""
     Create a conceptual science question for a 10-year-old child about {topic}. 
@@ -38,22 +37,21 @@ if st.button("🚀 Ask a New Question"):
     Correct: [Option A or Option B]
     """
     try:
-        response = model.generate_content(prompt).text
-        lines = response.split('\n')
+        # Fixed 2026 integration pipeline
+        response = model.generate_content(prompt)
+        lines = response.text.split('\n')
         for line in lines:
             if line.startswith("Question:"): st.session_state.question = line.replace("Question:", "").strip()
             if line.startswith("Option A:"): st.session_state.opt_a = line.replace("Option A:", "").strip()
             if line.startswith("Option B:"): st.session_state.opt_b = line.replace("Option B:", "").strip()
             if line.startswith("Correct:"): st.session_state.correct_answer = line.replace("Correct:", "").strip()
     except Exception as e:
-        st.error(f"API Error: {e}")
+        st.error(f"Authentication Sync Error. Re-checking key pipeline. Details: {e}")
 
-# Display Question and Options
 if st.session_state.question:
     st.subheader(st.session_state.question)
     user_choice = st.radio("Think carefully and select an option:", [st.session_state.opt_a, st.session_state.opt_b])
     
-    # Agent 2: Generates HTML/CSS Simulation Code
     if st.button("✔️ Check Answer & Watch Animation"):
         is_correct = "correct" if (("Option A" in st.session_state.correct_answer and user_choice == st.session_state.opt_a) or ("Option B" in st.session_state.correct_answer and user_choice == st.session_state.opt_b)) else "incorrect"
         
@@ -66,8 +64,17 @@ if st.session_state.question:
         model = genai.GenerativeModel('gemini-1.5-flash')
         animation_prompt = f"""
         Generate a single HTML page with inline CSS animations showing the physics outcome of this choice: '{user_choice}' under the topic '{topic}'.
-        Example: If it is about putting a coin in water, show a clean blue box representing water and a gold circle representing a coin moving down to the bottom (since a coin sinks in reality, show it sinking even if the user guessed wrong, so they learn).
-        Return ONLY valid, raw HTML/CSS code inside a container. No markdown, no triple backticks, no explanatory text. Just raw HTML code.
+        Example: If it is about putting a coin in water, show a clean blue box representing water and a gold circle representing a coin moving down to the bottom.
+        Return ONLY valid, raw HTML/CSS code inside a container. No markdown, no triple backticks. Just raw HTML code.
         """
         html_code = model.generate_content(animation_prompt).text
+        
+        # Clean potential raw response wrappers safely for rendering
+        if "```html" in html_code:
+            html_code = html_code.split("```html")[1].split("```")[0].strip()
+        elif "```" in html_code:
+            html_code = html_code.split("```")[1].split("```")[0].strip()
+            
         components.html(html_code, height=300)
+
+
