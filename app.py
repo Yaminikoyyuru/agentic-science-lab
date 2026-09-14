@@ -1,4 +1,4 @@
-import streamlit as st
+        import streamlit as st
 import google.generativeai as genai
 import streamlit.components.v1 as components
 
@@ -66,24 +66,25 @@ if st.session_state.question:
             
         model = genai.GenerativeModel('gemini-3.6-flash')
         
-        # Added beautiful spinner to handle loading states smoothly
+        # Beautiful loading spinner
         with st.spinner("🎬 AI Agent is autonomously rendering your interactive 3D simulation... Please wait a few seconds!"):
-            # Enhanced 3D Animation prompt forcing visible meshes and real interactive bindings
+            # STRICT prompt ensuring only 3D mesh and controls are generated without big HTML texts
             animation_prompt = f"""
-            Generate a single, complete HTML page that imports Three.js and OrbitControls via CDN to render a fully functional, visible, and interactive 3D physics simulation for a 10-year-old child.
+            Generate a single, complete HTML page that imports Three.js and OrbitControls via CDN to render a fully functional, visible, and interactive 3D physics simulation.
             Topic: '{topic}', Student Choice: '{user_choice}'.
             
-            CRUCIAL REQUIREMENTS FOR 3D RENDERING:
-            1. VISIBLE 3D OBJECTS: You MUST create actual, clearly visible 3D geometric shapes (like THREE.SphereGeometry for planets/atoms, THREE.BoxGeometry for blocks, or THREE.ConeGeometry) with bright, vivid, cartoonish colors using THREE.MeshStandardMaterial. Do not leave the canvas empty or black.
-            2. INTERACTIVE HTML CONTROLS: Create a stylized absolute-positioned HTML overlay container on top of the canvas with action buttons/sliders (e.g., Change Angle, Pulse, Reset Position) relevant to the science topic.
-            3. JAVASCRIPT EVENT LISTENERS: You MUST write explicit JavaScript code (`document.getElementById().addEventListener`) to link every single HTML button/slider to the Three.js scene. When a button is clicked, it MUST actively modify the 3D mesh properties (like position, rotation, scale, or velocity) inside the active `requestAnimationFrame` loop so the user sees immediate visual changes!
-            4. LIGHTING & CAMERA: Include an AmbientLight for base visibility and a DirectionalLight to cast beautiful shadows. Set camera position appropriately so all 3D meshes are perfectly centered and visible inside the 500px container.
+            CRUCIAL REQUIREMENTS FOR CLEAN 3D RENDERING:
+            1. STRICTLY NO TEXT OVERLAYS: Do NOT generate any large descriptive text paragraphs, scientific definitions, explanations, or headings in HTML elements. Only the raw 3D canvas and functional UI controls should be visible.
+            2. VISIBLE 3D OBJECTS: Create actual, clearly visible 3D geometric meshes (e.g., a multi-part cylinder/cone rocket for propulsion, or spheres for planets) with bright, vivid colors using THREE.MeshStandardMaterial.
+            3. FUNCTIONAL CONTROL BUTTONS ONLY: Create small, stylized, transparent or neat action buttons/sliders (e.g., "Launch Rocket", "Reset") positioned absolute at the bottom or corner of the screen. 
+            4. JAVASCRIPT EVENT LISTENERS: Link these buttons directly to the Three.js physics elements. When clicked, they must immediately modify mesh properties (like velocity, position, or scale) in the animation loop.
+            5. LIGHTING & POSITIONING: Ensure beautiful ambient and directional lighting. Position the camera perfectly so the 3D action is centered and visible inside the 500px height.
             
             Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
             """
             html_code = model.generate_content(animation_prompt).text
             
-            # Robust clean parsing logic to prevent List AttributeError bugs
+            # Robust clean parsing logic
             if "```html" in html_code:
                 html_code = html_code.split("```html")[1].split("```")[0].strip()
             elif "```" in html_code:
@@ -92,4 +93,3 @@ if st.session_state.question:
                 html_code = html_code.strip()
                 
             components.html(html_code, height=500)
-
