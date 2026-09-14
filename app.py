@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 import streamlit.components.v1 as components
+from google.api_core.exceptions import ResourceExhausted  # Imported to handle rate limits
 
 # Securely grab the API Key
 if "GEMINI_API_KEY" in st.secrets:
@@ -37,17 +38,15 @@ if st.button("🚀 Ask a New Question"):
     if not topic.strip():
         st.warning("Please type a topic first to let the AI Agent build your lab!")
     else:
-        # Clear EVERYTHING immediately before hitting the API to ensure no old data shows up
         st.session_state.question = None
         st.session_state.opt_a = ""
         st.session_state.opt_b = ""
         st.session_state.correct_answer = None
         st.session_state.show_simulation = False
-        st.session_state.q_counter += 1  # Forces radio widget to completely refresh
+        st.session_state.q_counter += 1  
         
         model = genai.GenerativeModel('gemini-3.6-flash')
         
-        # STRICT K-12 dynamic prompt preventing hardcoding, repetition, and high-level complexity
         prompt = f"""
         You are an advanced Agentic K-12 Science Educator AI. Create a highly engaging, conceptual science question suitable for a 10-year-old child (Grade 4-6 level) about the topic: '{topic}'.
         
@@ -71,6 +70,8 @@ if st.button("🚀 Ask a New Question"):
                     if line.startswith("Option A:"): st.session_state.opt_a = line.replace("Option A:", "").strip()
                     if line.startswith("Option B:"): st.session_state.opt_b = line.replace("Option B:", "").strip()
                     if line.startswith("Correct:"): st.session_state.correct_answer = line.replace("Correct:", "").strip()
+        except ResourceExhausted:
+            st.error("🛑 Gemini API Free Quota Exhausted. Please wait 1-2 minutes and try again!")
         except Exception as e:
             st.error(f"Sync Error. Details: {e}")
 
@@ -92,7 +93,6 @@ if st.session_state.question:
         model = genai.GenerativeModel('gemini-3.6-flash')
         
         with st.spinner("🎬 AI Agent is autonomously rendering your clean 3D simulation... Please wait!"):
-            # Enhanced 3D animation prompt enforcing K-12 visual scalability
             animation_prompt = f"""
             Generate a single, complete HTML page that imports Three.js and OrbitControls via CDN to render a fully functional, visible, and interactive 3D physics simulation.
             Topic: '{topic}', Student Choice: '{user_choice}'.
@@ -106,14 +106,18 @@ if st.session_state.question:
             
             Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
             """
-            html_code = model.generate_content(animation_prompt).text
-            
-            # Robust clean parsing logic
-            if "```html" in html_code:
-                html_code = html_code.split("```html")[1].split("```")[0].strip()
-            elif "```" in html_code:
-                html_code = html_code.split("```")[1].split("```")[0].strip()
-            else:
-                html_code = html_code.strip()
+            try:
+                html_code = model.generate_content(animation_prompt).text
                 
-            components.html(html_code, height=500)
+                if "```html" in html_code:
+                    html_code = html_code.split("```html").split("```").strip()
+                elif "```" in html_code:
+                    html_code = html_code.split("```").split("```").strip()
+                else:
+                    html_code = html_code.strip()
+                    
+                components.html(html_code, height=500)
+            except ResourceExhausted:
+                st.warning("⚠️ API Rate Limit reached while rendering 3D. Please wait a minute and click 'Check Answer' again.")
+            except Exception as e:
+                st.error(f"Visualization Error: {e}")
