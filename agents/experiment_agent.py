@@ -33,6 +33,7 @@ The experiment should contain:
 7. An expected result
 
 Keep the experiment scientifically meaningful.
+
 Do not invent impossible scientific relationships.
 
 Return ONLY valid JSON.
@@ -48,13 +49,6 @@ Use exactly this structure:
             "default": 50,
             "unit": "...",
             "description": "..."
-        }},
-        "variable2": {{
-            "min": 0,
-            "max": 100,
-            "default": 50,
-            "unit": "...",
-            "description": "..."
         }}
     }},
     "rules": [
@@ -64,18 +58,21 @@ Use exactly this structure:
 }}
 """
 
-        response = self.model.generate_content(prompt)
-
-        text = response.text.strip()
-
         try:
+
+            response = self.model.generate_content(prompt)
+
+            text = response.text.strip()
+
             return json.loads(text)
 
-        except Exception:
+        except Exception as error:
 
             return {
+                "error": str(error),
                 "title": topic,
                 "variables": {},
                 "rules": [],
                 "expected_result": ""
             }
+
