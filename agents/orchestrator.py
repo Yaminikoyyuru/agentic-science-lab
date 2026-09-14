@@ -15,22 +15,37 @@ class Orchestrator:
 
     def start_learning_session(self, topic):
 
-        # Step 1: Understand the science
+        # Step 1: Science reasoning
         science_result = self.science_agent.analyze_topic(
             topic
         )
 
-        # Step 2: Convert science into a child-friendly task
+        if "error" in science_result:
+            return {
+                "error": science_result["error"]
+            }
+
+        # Step 2: Teacher creates learning task
         teacher_result = self.teacher_agent.create_learning_task(
             topic,
             science_result
         )
 
-        # Step 3: Design an experiment
+        if "error" in teacher_result:
+            return {
+                "error": teacher_result["error"]
+            }
+
+        # Step 3: Experiment design
         experiment_result = self.experiment_agent.create_experiment(
             topic,
             science_result
         )
+
+        if "error" in experiment_result:
+            return {
+                "error": experiment_result["error"]
+            }
 
         return {
             "topic": topic,
@@ -41,7 +56,6 @@ class Orchestrator:
 
     def calculate_for_experiment(self, expression):
 
-        # Give the Science Agent access to the calculator tool
         return self.science_agent.calculate_value(
             expression
         )
@@ -54,7 +68,6 @@ class Orchestrator:
         prediction=""
     ):
 
-        # Evaluate what the student observed
         evaluation = self.evaluator_agent.evaluate(
             topic,
             experiment,
