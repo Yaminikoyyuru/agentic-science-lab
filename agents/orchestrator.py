@@ -39,6 +39,13 @@ class Orchestrator:
             "experiment": experiment_result
         }
 
+    def calculate_for_experiment(self, expression):
+
+        # Give the Science Agent access to the calculator tool
+        return self.science_agent.calculate_value(
+            expression
+        )
+
     def evaluate_student_action(
         self,
         topic,
