@@ -1,4 +1,3 @@
-import google.generativeai as genai
 import json
 
 from tools.calculator import calculate
@@ -15,7 +14,6 @@ class ScienceAgent:
             return calculate(expression)
 
         except Exception as error:
-
             return f"Calculation error: {error}"
 
     def analyze_topic(self, topic):
@@ -62,21 +60,21 @@ Use exactly this structure:
 }}
 """
 
-        response = self.model.generate_content(prompt)
-
-        text = response.text.strip()
-
         try:
+            response = self.model.generate_content(prompt)
+
+            text = response.text.strip()
 
             return json.loads(text)
 
-        except Exception:
+        except Exception as error:
 
             return {
+                "error": str(error),
                 "concept": topic,
                 "variables": [],
                 "relationships": [],
-                "experiment": text,
+                "experiment": "",
                 "expected_observation": "",
                 "explanation": ""
             }
