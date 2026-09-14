@@ -46,6 +46,7 @@ Determine:
 6. A useful next question
 
 Do not shame the student for an incorrect answer.
+
 Use the result to guide the next learning step.
 
 Return ONLY valid JSON.
@@ -62,18 +63,20 @@ Use exactly this structure:
 }}
 """
 
-        response = self.model.generate_content(prompt)
-
-        text = response.text.strip()
-
         try:
+
+            response = self.model.generate_content(prompt)
+
+            text = response.text.strip()
+
             return json.loads(text)
 
-        except Exception:
+        except Exception as error:
 
             return {
+                "error": str(error),
                 "observation_valid": False,
-                "discovery": response.text,
+                "discovery": "",
                 "prediction_supported": False,
                 "misconception": "",
                 "next_action": "",
