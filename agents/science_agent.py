@@ -1,11 +1,22 @@
 import google.generativeai as genai
 import json
 
+from tools.calculator import calculate
+
 
 class ScienceAgent:
 
     def __init__(self, model):
         self.model = model
+
+    def calculate_value(self, expression):
+
+        try:
+            return calculate(expression)
+
+        except Exception as error:
+
+            return f"Calculation error: {error}"
 
     def analyze_topic(self, topic):
 
@@ -56,6 +67,7 @@ Use exactly this structure:
         text = response.text.strip()
 
         try:
+
             return json.loads(text)
 
         except Exception:
