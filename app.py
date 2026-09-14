@@ -1,123 +1,301 @@
 import streamlit as st
 import google.generativeai as genai
-import streamlit.components.v1 as components
-from google.api_core.exceptions import ResourceExhausted  # Imported to handle rate limits
 
-# Securely grab the API Key
-if "GEMINI_API_KEY" in st.secrets:
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-else:
-    st.error("Missing Gemini API Key. Please add it to your Streamlit Secrets Management dashboard.")
-    st.stop()
+from agents.orchestrator import Orchestrator
+from state.student_state import StudentState
 
-# Configuration for the latest 2026 Frontier Models
-genai.configure(api_key=GEMINI_API_KEY)
 
-st.set_page_config(page_title="Agentic AI 3D Kids Lab", layout="centered")
-st.title("🧠 Agentic AI 3D Kids Science Lab")
-st.write("An Interactive 3D Simulation Science Game Powered by AI Agents")
-
-# Initialize robust session states
-if 'question' not in st.session_state:
-    st.session_state.question = None
-    st.session_state.opt_a = ""
-    st.session_state.opt_b = ""
-    st.session_state.correct_answer = None
-if 'q_counter' not in st.session_state:
-    st.session_state.q_counter = 0
-if 'show_simulation' not in st.session_state:
-    st.session_state.show_simulation = False
-
-# Premium Feature: Clean Slate. No dropdowns. Just open-ended typing!
-topic = st.text_input(
-    "Type ANY Science Topic you want to explore (e.g., Volcanoes, Solar System, Black Holes, Magnets):", 
-    placeholder="e.g., Space Travel, How Plants Breathe, Atoms..."
+st.set_page_config(
+    page_title="Agentic AI Science Lab",
+    page_icon="🔬",
+    layout="wide"
 )
 
-if st.button("🚀 Ask a New Question"):
-    if not topic.strip():
-        st.warning("Please type a topic first to let the AI Agent build your lab!")
-    else:
-        st.session_state.question = None
-        st.session_state.opt_a = ""
-        st.session_state.opt_b = ""
-        st.session_state.correct_answer = None
-        st.session_state.show_simulation = False
-        st.session_state.q_counter += 1  
-        
-        model = genai.GenerativeModel('gemini-3.6-flash')
-        
-        prompt = f"""
-        You are an advanced Agentic K-12 Science Educator AI. Create a highly engaging, conceptual science question suitable for a 10-year-old child (Grade 4-6 level) about the topic: '{topic}'.
-        
-        STRICT RULES FOR DYNAMIC GENERATION:
-        1. NO REPETITION & RANDOMISATION: Every time you are called, you must formulate a completely fresh, unique question. Do not repeat standard textbook questions. Look for a creative angle.
-        2. MANDATORY K-12 DOWN-SCALING: If the user types an advanced, complex college-level topic (like Quantum Mechanics, Advanced Calculus, Relativity, String Theory), you MUST automatically scale it down. Translate it into an everyday physical concept that a 10-year-old can easily understand and visualize (e.g., convert Quantum Mechanics into a basic question about how light/photons bounce or how basic atoms look).
-        3. FORMAT: Provide the question, exactly 2 options (one right, one wrong), and specify which option letter is correct.
-        
-        Format your response EXACTLY like this:
-        Question: [Your unique question in English]
-        Option A: [Option A text in English]
-        Option B: [Option B text in English]
-        Correct: [Option A or Option B]
-        """
-        try:
-            with st.spinner("🧠 AI Agent is dynamically brainstorming a fresh question..."):
-                response = model.generate_content(prompt)
-                lines = response.text.split('\n')
-                for line in lines:
-                    if line.startswith("Question:"): st.session_state.question = line.replace("Question:", "").strip()
-                    if line.startswith("Option A:"): st.session_state.opt_a = line.replace("Option A:", "").strip()
-                    if line.startswith("Option B:"): st.session_state.opt_b = line.replace("Option B:", "").strip()
-                    if line.startswith("Correct:"): st.session_state.correct_answer = line.replace("Correct:", "").strip()
-        except ResourceExhausted:
-            st.error("🛑 Gemini API Free Quota Exhausted. Please wait 1-2 minutes and try again!")
-        except Exception as e:
-            st.error(f"Sync Error. Details: {e}")
 
-if st.session_state.question:
-    st.subheader(st.session_state.question)
-    user_choice = st.radio("Think carefully and select an option:", 
-                           [st.session_state.opt_a, st.session_state.opt_b], 
-                           key=f"radio_q_{st.session_state.q_counter}")
-    
-    if st.button("✔️ Check Answer & Watch 3D Animation") or st.session_state.show_simulation:
-        st.session_state.show_simulation = True
-        is_correct = "correct" if (("Option A" in st.session_state.correct_answer and user_choice == st.session_state.opt_a) or ("Option B" in st.session_state.correct_answer and user_choice == st.session_state.opt_b)) else "incorrect"
-        
-        if is_correct == "correct":
-            st.success("🎉 Brilliant! That is the correct answer.")
+st.title("🔬 Agentic AI 3D Science Lab")
+st.write(
+    "Explore a science topic through AI agents, "
+    "experiments, predictions, and observations."
+)
+
+
+# -----------------------------
+# Gemini configuration
+# -----------------------------
+
+api_key = st.text_input(
+    "Enter your Gemini API Key",
+    type="password"
+)
+
+if not api_key:
+    st.info("Enter your Gemini API key to start.")
+    st.stop()
+
+genai.configure(api_key=api_key)
+
+model = genai.GenerativeModel(
+    "gemini-3.6-flash"
+)
+
+
+# -----------------------------
+# Create agents and state
+# -----------------------------
+
+orchestrator = Orchestrator(model)
+
+if "student_state" not in st.session_state:
+    st.session_state.student_state = StudentState()
+
+state = st.session_state.student_state
+
+
+# -----------------------------
+# Topic input
+# -----------------------------
+
+st.header("1. Choose a Science Topic")
+
+topic = st.text_input(
+    "What do you want to explore?",
+    placeholder="Example: gravity, plants, electricity"
+)
+
+
+if st.button("Start Learning Session"):
+
+    if not topic.strip():
+
+        st.warning("Please enter a science topic.")
+
+    else:
+
+        with st.spinner("AI agents are preparing your experiment..."):
+
+            session = orchestrator.start_learning_session(
+                topic
+            )
+
+        state.topic = topic
+        state.current_question = (
+            session["teacher"]["question"]
+        )
+        state.experiment = session["experiment"]
+        state.next_experiment()
+
+        st.session_state.session = session
+
+
+# -----------------------------
+# Display learning session
+# -----------------------------
+
+if "session" in st.session_state:
+
+    session = st.session_state.session
+
+    science = session["science"]
+    teacher = session["teacher"]
+    experiment = session["experiment"]
+
+    st.divider()
+
+    st.header("2. Science Agent")
+
+    st.write(
+        "**Core concept:**",
+        science.get("concept", "")
+    )
+
+    st.write(
+        "**Scientific explanation:**",
+        science.get("explanation", "")
+    )
+
+    st.header("3. Teacher Agent")
+
+    st.write(
+        teacher.get("question", "")
+    )
+
+    option_a = teacher.get("option_a", "")
+    option_b = teacher.get("option_b", "")
+
+    answer = st.radio(
+        "Choose your answer:",
+        [
+            f"A. {option_a}",
+            f"B. {option_b}"
+        ]
+    )
+
+    if st.button("Check Answer"):
+
+        selected = "A" if answer.startswith("A.") else "B"
+
+        correct = teacher.get(
+            "correct_option",
+            ""
+        )
+
+        if selected == correct:
+            st.success(
+                "Correct! Now let's experiment."
+            )
         else:
-            st.error("❌ Oops! Incorrect answer. But explore the 3D physics simulation below to learn why!")
-            
-        model = genai.GenerativeModel('gemini-3.6-flash')
-        
-        with st.spinner("🎬 AI Agent is autonomously rendering your clean 3D simulation... Please wait!"):
-            animation_prompt = f"""
-            Generate a single, complete HTML page that imports Three.js and OrbitControls via CDN to render a fully functional, visible, and interactive 3D physics simulation.
-            Topic: '{topic}', Student Choice: '{user_choice}'.
-            
-            STRICT VISUAL REQUIREMENTS:
-            1. K-12 SIMPLICITY: The 3D scene must be visually intuitive for a 10-year-old child. Use bright, vibrant, cartoonish colors.
-            2. NO COLLEGE COMPLEXITY: If the topic is complex (like Quantum Mechanics), render basic cartoonish spheres bouncing or moving like simple atoms/particles. Do NOT show complex mathematical graphs, wave distributions, or text blocks.
-            3. STRICTLY NO TEXT OVERLAYS: Do NOT write any HTML headers, paragraphs, or explanations outside the canvas. Only the raw 3D scene and absolute-positioned functional buttons are allowed.
-            4. INTERACTION: Create small, neat control buttons (e.g., "Animate", "Reset") absolute positioned at the bottom. Write explicit JS Event Listeners so clicking them visibly alters mesh parameters (position, speed, or rotation) inside the `requestAnimationFrame` loop.
-            5. LIGHTING & FRAMING: Center the 3D objects perfectly. Ensure ambient and directional lights are active so nothing is pitch black.
-            
-            Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
-            """
-            try:
-                html_code = model.generate_content(animation_prompt).text
-                
-                if "```html" in html_code:
-                    html_code = html_code.split("```html").split("```").strip()
-                elif "```" in html_code:
-                    html_code = html_code.split("```").split("```").strip()
-                else:
-                    html_code = html_code.strip()
-                    
-                components.html(html_code, height=500)
-            except ResourceExhausted:
-                st.warning("⚠️ API Rate Limit reached while rendering 3D. Please wait a minute and click 'Check Answer' again.")
-            except Exception as e:
-                st.error(f"Visualization Error: {e}")
+            st.warning(
+                "Not quite. Let's investigate it through the experiment."
+            )
+
+    st.header("4. Make Your Prediction")
+
+    prediction = st.text_input(
+        teacher.get(
+            "prediction_prompt",
+            "What do you think will happen?"
+        )
+    )
+
+    st.header("5. Experiment Agent")
+
+    st.subheader(
+        experiment.get("title", "Science Experiment")
+    )
+
+    variables = experiment.get(
+        "variables",
+        {}
+    )
+
+    selected_values = {}
+
+    for name, config in variables.items():
+
+        minimum = config.get("min", 0)
+        maximum = config.get("max", 100)
+        default = config.get("default", 50)
+        unit = config.get("unit", "")
+
+        value = st.slider(
+            f"{name} ({unit})",
+            min_value=float(minimum),
+            max_value=float(maximum),
+            value=float(default)
+        )
+
+        selected_values[name] = value
+
+        st.caption(
+            config.get("description", "")
+        )
+
+    st.write(
+        "**Expected result:**",
+        experiment.get(
+            "expected_result",
+            ""
+        )
+    )
+
+    st.header("6. Student Observation")
+
+    observation = st.text_area(
+        "What did you observe after changing the variables?",
+        placeholder="Example: When I increased the value, the object moved faster."
+    )
+
+    if st.button("Evaluate My Experiment"):
+
+        if not observation.strip():
+
+            st.warning(
+                "Please describe your observation first."
+            )
+
+        else:
+
+            with st.spinner(
+                "Evaluator Agent is analyzing your observation..."
+            ):
+
+                evaluation = orchestrator.evaluate_student_action(
+                    topic,
+                    experiment,
+                    observation,
+                    prediction
+                )
+
+            state.add_observation(
+                observation
+            )
+
+            state.add_evaluation(
+                evaluation
+            )
+
+            state.add_history({
+                "topic": topic,
+                "prediction": prediction,
+                "observation": observation,
+                "evaluation": evaluation
+            })
+
+            st.session_state.evaluation = evaluation
+
+
+# -----------------------------
+# Evaluation result
+# -----------------------------
+
+if "evaluation" in st.session_state:
+
+    evaluation = st.session_state.evaluation
+
+    st.divider()
+
+    st.header("7. Evaluator Agent")
+
+    st.write(
+        "**What you discovered:**",
+        evaluation.get(
+            "discovery",
+            ""
+        )
+    )
+
+    st.write(
+        "**Prediction supported:**",
+        evaluation.get(
+            "prediction_supported",
+            False
+        )
+    )
+
+    misconception = evaluation.get(
+        "misconception",
+        ""
+    )
+
+    if misconception:
+        st.info(
+            f"💡 Learning hint: {misconception}"
+        )
+
+    st.write(
+        "**Next action:**",
+        evaluation.get(
+            "next_action",
+            ""
+        )
+    )
+
+    st.write(
+        "**Next question:**",
+        evaluation.get(
+            "next_question",
+            ""
+        )
+    )
+      
+      
