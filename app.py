@@ -66,12 +66,19 @@ if st.session_state.question:
             
         model = genai.GenerativeModel('gemini-3.6-flash')
         
-        # Added a beautiful spinner to handle LLM generation delay nicely
+        # Added beautiful spinner to handle loading states smoothly
         with st.spinner("🎬 AI Agent is autonomously rendering your interactive 3D simulation... Please wait a few seconds!"):
+            # Enhanced 3D Animation prompt forcing visible meshes and real interactive bindings
             animation_prompt = f"""
-            Generate a single HTML page that imports the Three.js library via CDN script to render a complete, beautiful interactive 3D physics animation showing the realistic scientific outcome of this choice: '{user_choice}' under the topic '{topic}'.
-            Include OrbitControls so the user can rotate the 3D scene using their mouse. Add proper 3D lighting (Ambient and Directional). 
-            Make the colors bright, vivid, and cartoonish for a 10-year-old child.
+            Generate a single, complete HTML page that imports Three.js and OrbitControls via CDN to render a fully functional, visible, and interactive 3D physics simulation for a 10-year-old child.
+            Topic: '{topic}', Student Choice: '{user_choice}'.
+            
+            CRUCIAL REQUIREMENTS FOR 3D RENDERING:
+            1. VISIBLE 3D OBJECTS: You MUST create actual, clearly visible 3D geometric shapes (like THREE.SphereGeometry for planets/atoms, THREE.BoxGeometry for blocks, or THREE.ConeGeometry) with bright, vivid, cartoonish colors using THREE.MeshStandardMaterial. Do not leave the canvas empty or black.
+            2. INTERACTIVE HTML CONTROLS: Create a stylized absolute-positioned HTML overlay container on top of the canvas with action buttons/sliders (e.g., Change Angle, Pulse, Reset Position) relevant to the science topic.
+            3. JAVASCRIPT EVENT LISTENERS: You MUST write explicit JavaScript code (`document.getElementById().addEventListener`) to link every single HTML button/slider to the Three.js scene. When a button is clicked, it MUST actively modify the 3D mesh properties (like position, rotation, scale, or velocity) inside the active `requestAnimationFrame` loop so the user sees immediate visual changes!
+            4. LIGHTING & CAMERA: Include an AmbientLight for base visibility and a DirectionalLight to cast beautiful shadows. Set camera position appropriately so all 3D meshes are perfectly centered and visible inside the 500px container.
+            
             Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
             """
             html_code = model.generate_content(animation_prompt).text
@@ -85,3 +92,4 @@ if st.session_state.question:
                 html_code = html_code.strip()
                 
             components.html(html_code, height=500)
+
