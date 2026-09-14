@@ -64,23 +64,24 @@ if st.session_state.question:
         else:
             st.error("❌ Oops! Incorrect answer. But explore the 3D physics simulation below to learn why!")
             
-        st.write("🎬 AI Agent is rendering your interactive 3D simulation...")
         model = genai.GenerativeModel('gemini-3.6-flash')
         
-        animation_prompt = f"""
-        Generate a single HTML page that imports the Three.js library via CDN script to render a complete, beautiful interactive 3D physics animation showing the realistic scientific outcome of this choice: '{user_choice}' under the topic '{topic}'.
-        Include OrbitControls so the user can rotate the 3D scene using their mouse. Add proper 3D lighting (Ambient and Directional). 
-        Make the colors bright, vivid, and cartoonish for a 10-year-old child.
-        Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
-        """
-        html_code = model.generate_content(animation_prompt).text
-        
-        # Robust 2026 clean parsing logic to prevent List AttributeError bugs
-        if "```html" in html_code:
-            html_code = html_code.split("```html")[1].split("```")[0].strip()
-        elif "```" in html_code:
-            html_code = html_code.split("```")[1].split("```")[0].strip()
-        else:
-            html_code = html_code.strip()
+        # Added a beautiful spinner to handle LLM generation delay nicely
+        with st.spinner("🎬 AI Agent is autonomously rendering your interactive 3D simulation... Please wait a few seconds!"):
+            animation_prompt = f"""
+            Generate a single HTML page that imports the Three.js library via CDN script to render a complete, beautiful interactive 3D physics animation showing the realistic scientific outcome of this choice: '{user_choice}' under the topic '{topic}'.
+            Include OrbitControls so the user can rotate the 3D scene using their mouse. Add proper 3D lighting (Ambient and Directional). 
+            Make the colors bright, vivid, and cartoonish for a 10-year-old child.
+            Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
+            """
+            html_code = model.generate_content(animation_prompt).text
             
-        components.html(html_code, height=500)
+            # Robust clean parsing logic to prevent List AttributeError bugs
+            if "```html" in html_code:
+                html_code = html_code.split("```html")[1].split("```")[0].strip()
+            elif "```" in html_code:
+                html_code = html_code.split("```")[1].split("```")[0].strip()
+            else:
+                html_code = html_code.strip()
+                
+            components.html(html_code, height=500)
