@@ -1069,8 +1069,7 @@ if session_data:
         "Save Prediction"
     ):
 
-        st.session_state.prediction =
-            prediction
+        st.session_state.prediction = prediction
 
 
         st.session_state.student_state.set_prediction(
