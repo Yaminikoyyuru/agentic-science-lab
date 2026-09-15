@@ -997,8 +997,7 @@ if session_data:
         )
 
 
-    selected_option =
-        st.radio(
+    selected_option =   st.radio(
             "Choose your answer:",
             [
                 option_a,
@@ -1045,8 +1044,7 @@ if session_data:
     # PREDICTION
     # =====================================================
 
-    prediction_prompt =
-        teacher.get(
+    prediction_prompt =  teacher.get(
             "prediction_prompt",
             "What do you predict will happen?"
         )
@@ -1061,8 +1059,7 @@ if session_data:
     )
 
 
-    prediction =
-        st.text_area(
+    prediction = st.text_area(
             "Your prediction",
             value=st.session_state.prediction,
             key="prediction_input"
@@ -1112,8 +1109,7 @@ if session_data:
     )
 
 
-    variables =
-        experiment.get(
+    variables = experiment.get(
             "variables",
             {}
         )
@@ -1133,25 +1129,22 @@ if session_data:
 
             try:
 
-                minimum =
-                    float(
+                minimum =  float(
                         config.get(
                             "min",
                             0
                         )
                     )
 
-                maximum =
-                    float(
+                maximum = float(
                         config.get(
                             "max",
                             100
                         )
                     )
 
-                default =
-                    float(
-                        config.get(
+                default = float(
+                      config.get(
                             "default",
                             minimum
                         )
@@ -1166,12 +1159,10 @@ if session_data:
 
             if minimum >= maximum:
 
-                maximum =
-                    minimum + 100
+                maximum =  minimum + 100
 
 
-            default =
-                max(
+            default = max(
                     minimum,
                     min(
                         default,
@@ -1189,12 +1180,10 @@ if session_data:
 
             else:
 
-                step =
-                    (maximum - minimum) / 100.0
+                step = (maximum - minimum) / 100.0
 
 
-            value =
-                st.slider(
+            value = st.slider(
                     f"{name} ({config.get('unit', '')})",
                     min_value=minimum,
                     max_value=maximum,
@@ -1204,8 +1193,7 @@ if session_data:
                 )
 
 
-            current_values[name] =
-                value
+            current_values[name] = value
 
 
             st.caption(
@@ -1225,8 +1213,7 @@ if session_data:
     )
 
 
-    simulation =
-        experiment.get(
+    simulation = experiment.get(
             "simulation",
             {}
         )
@@ -1251,8 +1238,7 @@ if session_data:
         )
 
 
-        controls =
-            simulation.get(
+        controls = simulation.get(
                 "controls",
                 []
             )
@@ -1272,8 +1258,7 @@ if session_data:
                 )
 
 
-        actions =
-            simulation.get(
+        actions = simulation.get(
                 "actions",
                 []
             )
@@ -1293,8 +1278,7 @@ if session_data:
                 )
 
 
-        observations =
-            simulation.get(
+        observations = simulation.get(
                 "visual_observations",
                 []
             )
@@ -1322,8 +1306,7 @@ if session_data:
     )
 
 
-    observation =
-        st.text_area(
+    observation =  st.text_area(
             "What did you observe in the experiment?",
             key="observation_input"
         )
@@ -1347,8 +1330,7 @@ if session_data:
 
                 try:
 
-                    evaluation =
-                        orchestrator.evaluate_student_action(
+                    evaluation =  orchestrator.evaluate_student_action(
                             topic,
                             experiment,
                             observation,
@@ -1356,8 +1338,7 @@ if session_data:
                         )
 
 
-                    st.session_state.evaluation =
-                        evaluation
+                    st.session_state.evaluation =  evaluation
 
 
                     st.session_state.student_state.add_observation(
@@ -1381,8 +1362,7 @@ if session_data:
     # EVALUATION
     # =====================================================
 
-    evaluation =
-        st.session_state.evaluation
+    evaluation = st.session_state.evaluation
 
 
     if evaluation:
