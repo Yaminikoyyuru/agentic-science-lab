@@ -1,13 +1,16 @@
-import streamlit as st
 import json
 import html
+
+import streamlit as st
+import streamlit.components.v1 as components
+import google.generativeai as genai
 
 from agents.orchestrator import Orchestrator
 from state.student_state import StudentState
 
 
 # ---------------------------------------------------------
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ---------------------------------------------------------
 
 st.set_page_config(
@@ -16,40 +19,30 @@ st.set_page_config(
     layout="wide"
 )
 
-
-# ---------------------------------------------------------
-# GEMINI SETUP
-# ---------------------------------------------------------
-
 st.title("🔬 Agentic AI 3D Kids Science Lab")
 st.write(
-    "Explore science through AI-generated questions, "
-    "experiments, predictions, observations and simulations."
+    "Explore science through AI-generated experiments and "
+    "interactive 3D simulations."
 )
+
+
+# ---------------------------------------------------------
+# GEMINI CONFIGURATION
+# ---------------------------------------------------------
 
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
 except Exception:
     st.error(
-        "Gemini API key is not configured. "
-        "Please add GEMINI_API_KEY to Streamlit Secrets."
+        "GEMINI_API_KEY is not configured in Streamlit Secrets."
     )
     st.stop()
 
-
-# ---------------------------------------------------------
-# MODEL
-# ---------------------------------------------------------
-
 try:
-    import google.generativeai as genai
-
     genai.configure(api_key=api_key)
-
     model = genai.GenerativeModel("gemini-3.6-flash")
-
 except Exception as error:
-    st.error(f"Unable to initialize Gemini: {error}")
+    st.error(f"Unable to configure Gemini: {error}")
     st.stop()
 
 
@@ -85,915 +78,1059 @@ orchestrator = Orchestrator(model)
 # ---------------------------------------------------------
 
 topic = st.text_input(
-    "What science topic do you want to explore?",
-    placeholder="Example: Gravity, plants, electricity, density..."
+    "Enter any science topic",
+    placeholder="Example: Why do plants need sunlight?"
 )
 
 
-if st.button("🚀 Start Learning Session"):
+# ---------------------------------------------------------
+# START SESSION
+# ---------------------------------------------------------
+
+if st.button("🚀 Start Learning Session", type="primary"):
 
     if not topic.strip():
-        st.warning("Please enter a science topic.")
+        st.warning("Please enter a science topic first.")
         st.stop()
 
-    # Reset old session
+    # Reset state for new session
+    st.session_state.student_state = StudentState()
     st.session_state.prediction = ""
     st.session_state.evaluation = None
     st.session_state.experiment_values = {}
 
-    try:
+    with st.spinner(
+        "AI Science, Teacher and Experiment Agents are working..."
+    ):
 
-        session = orchestrator.start_learning_session(
-            topic.strip()
-        )
+        try:
+            session_data = orchestrator.start_learning_session(
+                topic.strip()
+            )
 
-        if "error" in session:
+            if "error" in session_data:
+                st.error(
+                    "The AI session could not be started."
+                )
+                st.error(session_data["error"])
+                st.stop()
+
+            st.session_state.session_data = session_data
+            st.session_state.student_state.topic = topic.strip()
+
+        except Exception as error:
             st.error(
                 "The AI session could not be started."
             )
-            st.error(session["error"])
+            st.error(str(error))
             st.stop()
 
-        st.session_state.session_data = session
-
-        # Save topic
-        st.session_state.student_state.topic = topic.strip()
-
-        # Save experiment
-        st.session_state.student_state.experiment = (
-            session.get("experiment", {})
-        )
-
-        # Save question
-        teacher = session.get("teacher", {})
-
-        st.session_state.student_state.current_question = (
-            teacher.get("question", "")
-        )
-
-        st.rerun()
-
-    except Exception as error:
-
-        st.error(
-            "The AI session could not be started."
-        )
-
-        st.error(str(error))
-
 
 # ---------------------------------------------------------
-# STOP IF SESSION NOT CREATED
+# DISPLAY SESSION
 # ---------------------------------------------------------
 
-if not st.session_state.session_data:
-    st.info(
-        "Enter a science topic above and start a learning session."
-    )
-    st.stop()
+session_data = st.session_state.session_data
+
+if session_data:
+
+    science = session_data.get("science", {})
+    teacher = session_data.get("teacher", {})
+    experiment = session_data.get("experiment", {})
 
 
-session = st.session_state.session_data
+    # -----------------------------------------------------
+    # SCIENCE AGENT
+    # -----------------------------------------------------
 
-science = session.get("science", {})
-teacher = session.get("teacher", {})
-experiment = session.get("experiment", {})
+    st.header("🧠 Science Agent")
 
+    st.subheader("Core Concept")
+    st.write(science.get("concept", ""))
 
-# ---------------------------------------------------------
-# SCIENCE ANALYSIS
-# ---------------------------------------------------------
+    if science.get("variables"):
+        st.subheader("Scientific Variables")
 
-with st.expander("🧠 Science Agent Analysis"):
-
-    st.write(
-        f"**Core concept:** "
-        f"{science.get('concept', '')}"
-    )
+        for variable in science["variables"]:
+            st.write(
+                f"**{variable.get('name', '')}:** "
+                f"{variable.get('value', '')} "
+                f"{variable.get('unit', '')} — "
+                f"{variable.get('role', '')}"
+            )
 
     if science.get("relationships"):
-        st.write("**Cause-and-effect relationships:**")
+        st.subheader("Cause-and-Effect Relationships")
 
         for relationship in science["relationships"]:
-            st.write(f"- {relationship}")
+            st.write(f"• {relationship}")
 
-    if science.get("explanation"):
-        st.write(
-            f"**Explanation:** "
-            f"{science.get('explanation')}"
-        )
-
-
-# ---------------------------------------------------------
-# TEACHER QUESTION
-# ---------------------------------------------------------
-
-st.header("👩‍🏫 Your Prediction")
-
-st.write(
-    teacher.get(
-        "question",
-        "What do you think will happen?"
-    )
-)
-
-option_a = teacher.get("option_a", "")
-option_b = teacher.get("option_b", "")
-
-if option_a:
-    st.write(f"**A.** {option_a}")
-
-if option_b:
-    st.write(f"**B.** {option_b}")
-
-
-prediction = st.text_area(
-    "Make your prediction:",
-    value=st.session_state.prediction,
-    placeholder="I think..."
-)
-
-if st.button("💭 Save Prediction"):
-
-    st.session_state.prediction = prediction
-
-    st.session_state.student_state.set_prediction(
-        prediction
-    )
-
-    st.success("Prediction saved!")
-
-
-# ---------------------------------------------------------
-# EXPERIMENT
-# ---------------------------------------------------------
-
-st.header("🧪 AI-Generated Experiment")
-
-st.write(
-    f"### {experiment.get('title', 'Interactive Experiment')}"
-)
-
-if experiment.get("expected_result"):
     st.write(
-        f"**Expected result:** "
-        f"{experiment.get('expected_result')}"
+        f"**Experiment idea:** "
+        f"{science.get('experiment', '')}"
+    )
+
+    st.write(
+        f"**Expected observation:** "
+        f"{science.get('expected_observation', '')}"
+    )
+
+    st.write(
+        f"**Scientific explanation:** "
+        f"{science.get('explanation', '')}"
     )
 
 
-# ---------------------------------------------------------
-# EXPERIMENT VARIABLES
-# ---------------------------------------------------------
+    # -----------------------------------------------------
+    # TEACHER AGENT
+    # -----------------------------------------------------
 
-variables = experiment.get("variables", {})
+    st.header("👩‍🏫 Teacher Agent")
 
-current_values = {}
+    st.subheader(
+        teacher.get(
+            "question",
+            "No question generated."
+        )
+    )
 
-if variables:
+    option_a = teacher.get("option_a", "")
+    option_b = teacher.get("option_b", "")
 
-    st.subheader("🎛️ Experiment Controls")
+    selected_option = st.radio(
+        "Choose your answer:",
+        [
+            option_a,
+            option_b
+        ],
+        key="answer_choice"
+    )
 
-    for name, config in variables.items():
+    if st.button("Check Answer"):
 
-        try:
-            minimum = float(config.get("min", 0))
-            maximum = float(config.get("max", 100))
-            default = float(config.get("default", minimum))
-            unit = config.get("unit", "")
+        if selected_option == option_a:
+            selected_letter = "A"
+        else:
+            selected_letter = "B"
 
-            # Keep default inside allowed range
+        correct = teacher.get("correct_option", "")
+
+        if selected_letter == correct:
+            st.success("✅ Correct!")
+        else:
+            st.warning("❌ Not quite. Let's explore it through the experiment.")
+
+    prediction_prompt = teacher.get(
+        "prediction_prompt",
+        "What do you predict will happen?"
+    )
+
+    st.subheader("🔮 Make a Prediction")
+    st.write(prediction_prompt)
+
+    prediction = st.text_area(
+        "Your prediction",
+        value=st.session_state.prediction,
+        key="prediction_input"
+    )
+
+    if st.button("Save Prediction"):
+        st.session_state.prediction = prediction
+        st.session_state.student_state.set_prediction(
+            prediction
+        )
+        st.success("Prediction saved!")
+
+
+    # -----------------------------------------------------
+    # EXPERIMENT AGENT
+    # -----------------------------------------------------
+
+    st.header("🧪 AI-Generated Experiment")
+
+    st.subheader(
+        experiment.get(
+            "title",
+            "Interactive Science Experiment"
+        )
+    )
+
+    st.write(
+        experiment.get(
+            "expected_result",
+            ""
+        )
+    )
+
+    variables = experiment.get("variables", {})
+
+    current_values = {}
+
+    if variables:
+
+        st.subheader("🎛️ Experiment Controls")
+
+        for name, config in variables.items():
+
+            try:
+                minimum = float(config.get("min", 0))
+                maximum = float(config.get("max", 100))
+                default = float(config.get("default", minimum))
+            except Exception:
+                minimum = 0.0
+                maximum = 100.0
+                default = 50.0
+
+            if minimum >= maximum:
+                maximum = minimum + 100
+
             default = max(
                 minimum,
                 min(default, maximum)
             )
 
+            # Streamlit slider step
+            if (
+                float(minimum).is_integer()
+                and float(maximum).is_integer()
+            ):
+                step = 1.0
+            else:
+                step = (maximum - minimum) / 100.0
+
             value = st.slider(
-                f"{name} ({unit})",
-                min_value=minimum,
-                max_value=maximum,
-                value=default
+                f"{name} ({config.get('unit', '')})",
+                min_value=float(minimum),
+                max_value=float(maximum),
+                value=float(default),
+                step=float(step),
+                key=f"experiment_{name}"
             )
 
             current_values[name] = value
 
-            description = config.get(
-                "description",
-                ""
-            )
-
-            if description:
-                st.caption(description)
-
-        except Exception:
-            continue
-
-
-st.session_state.experiment_values = current_values
-
-
-# ---------------------------------------------------------
-# 3D SIMULATION ENGINE
-# ---------------------------------------------------------
-
-st.header("🌐 3D Virtual Experiment")
-
-
-def is_gravity_experiment(topic_text, experiment_data, variable_data):
-
-    text = (
-        str(topic_text)
-        + " "
-        + str(experiment_data.get("title", ""))
-        + " "
-        + str(experiment_data.get("expected_result", ""))
-        + " "
-        + str(experiment_data.get("rules", ""))
-        + " "
-        + " ".join(variable_data.keys())
-    ).lower()
-
-    gravity_words = [
-        "gravity",
-        "fall",
-        "falling",
-        "drop",
-        "dropped",
-        "free fall",
-        "mass",
-        "weight",
-        "height"
-    ]
-
-    return any(
-        word in text
-        for word in gravity_words
-    )
-
-
-def find_value(variable_data, keywords, default_value):
-
-    for name, value in variable_data.items():
-
-        name_lower = name.lower()
-
-        for keyword in keywords:
-
-            if keyword in name_lower:
-                return value
-
-    return default_value
-
-
-gravity_experiment = is_gravity_experiment(
-    session.get("topic", ""),
-    experiment,
-    variables
-)
-
-
-if gravity_experiment:
-
-    mass_1 = find_value(
-        current_values,
-        ["mass", "weight"],
-        20
-    )
-
-    height = find_value(
-        current_values,
-        ["height", "drop", "distance"],
-        100
-    )
-
-    # Find a second mass if AI generated multiple
-    # mass-like variables.
-    mass_values = []
-
-    for name, value in current_values.items():
-
-        if (
-            "mass" in name.lower()
-            or "weight" in name.lower()
-        ):
-            mass_values.append(value)
-
-    if len(mass_values) >= 2:
-        mass_1 = mass_values[0]
-        mass_2 = mass_values[1]
-    else:
-        mass_2 = mass_1 * 2
-
-
-    # -----------------------------------------------------
-    # SAFE HTML VALUES
-    # -----------------------------------------------------
-
-    mass_1 = float(mass_1)
-    mass_2 = float(mass_2)
-    height = float(height)
-
-    mass_1_text = html.escape(
-        f"{mass_1:g}"
-    )
-
-    mass_2_text = html.escape(
-        f"{mass_2:g}"
-    )
-
-    height_text = html.escape(
-        f"{height:g}"
-    )
-
-
-    # -----------------------------------------------------
-    # THREE.JS FALLING BALL SIMULATION
-    # -----------------------------------------------------
-
-    simulation_html = f"""
-    <!DOCTYPE html>
-
-    <html>
-
-    <head>
-
-        <meta charset="UTF-8">
-
-        <style>
-
-            body {{
-                margin: 0;
-                overflow: hidden;
-                font-family: Arial, sans-serif;
-                background: #f5f7fa;
-            }}
-
-            #container {{
-                width: 100%;
-                height: 520px;
-                position: relative;
-            }}
-
-            #info {{
-                position: absolute;
-                top: 15px;
-                left: 15px;
-                z-index: 10;
-                background: white;
-                padding: 12px 16px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.12);
-                line-height: 1.5;
-            }}
-
-            #dropButton {{
-                margin-top: 8px;
-                padding: 8px 14px;
-                border: none;
-                border-radius: 7px;
-                cursor: pointer;
-                font-size: 14px;
-            }}
-
-        </style>
-
-    </head>
-
-
-    <body>
-
-        <div id="container">
-
-            <div id="info">
-
-                <strong>Gravity Experiment</strong><br>
-
-                Ball A mass:
-                {mass_1_text} g<br>
-
-                Ball B mass:
-                {mass_2_text} g<br>
-
-                Drop height:
-                {height_text} cm<br>
-
-                <button id="dropButton">
-                    Drop Balls
-                </button>
-
-            </div>
-
-        </div>
-
-
-        <script type="module">
-
-            import * as THREE
-            from
-            'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-
-
-            // ---------------------------------------------
-            // SCENE
-            // ---------------------------------------------
-
-            const scene = new THREE.Scene();
-
-            scene.background =
-                new THREE.Color(0xf5f7fa);
-
-
-            // ---------------------------------------------
-            // CAMERA
-            // ---------------------------------------------
-
-            const camera =
-                new THREE.PerspectiveCamera(
-                    45,
-                    window.innerWidth / 520,
-                    0.1,
-                    1000
-                );
-
-            camera.position.set(
-                0,
-                3,
-                10
-            );
-
-
-            // ---------------------------------------------
-            // RENDERER
-            // ---------------------------------------------
-
-            const renderer =
-                new THREE.WebGLRenderer({
-                    antialias: true
-                });
-
-            renderer.setSize(
-                window.innerWidth,
-                520
-            );
-
-            renderer.setPixelRatio(
-                window.devicePixelRatio
-            );
-
-            document
-                .getElementById("container")
-                .appendChild(
-                    renderer.domElement
-                );
-
-
-            // ---------------------------------------------
-            // LIGHTS
-            // ---------------------------------------------
-
-            const ambientLight =
-                new THREE.AmbientLight(
-                    0xffffff,
-                    0.8
-                );
-
-            scene.add(
-                ambientLight
-            );
-
-
-            const directionalLight =
-                new THREE.DirectionalLight(
-                    0xffffff,
-                    1
-                );
-
-            directionalLight.position.set(
-                5,
-                10,
-                5
-            );
-
-            scene.add(
-                directionalLight
-            );
-
-
-            // ---------------------------------------------
-            // GROUND
-            // ---------------------------------------------
-
-            const groundGeometry =
-                new THREE.BoxGeometry(
-                    8,
-                    0.3,
-                    4
-                );
-
-            const groundMaterial =
-                new THREE.MeshStandardMaterial({
-                    color: 0xcccccc
-                });
-
-            const ground =
-                new THREE.Mesh(
-                    groundGeometry,
-                    groundMaterial
-                );
-
-            ground.position.y = -3;
-
-            scene.add(
-                ground
-            );
-
-
-            // ---------------------------------------------
-            // HEIGHT MARKER
-            // ---------------------------------------------
-
-            const poleGeometry =
-                new THREE.CylinderGeometry(
-                    0.04,
-                    0.04,
-                    6,
-                    16
-                );
-
-            const poleMaterial =
-                new THREE.MeshStandardMaterial({
-                    color: 0x555555
-                });
-
-            const pole =
-                new THREE.Mesh(
-                    poleGeometry,
-                    poleMaterial
-                );
-
-            pole.position.set(
-                -3,
-                0,
-                0
-            );
-
-            scene.add(
-                pole
-            );
-
-
-            // ---------------------------------------------
-            // BALLS
-            // ---------------------------------------------
-
-            const ballGeometry =
-                new THREE.SphereGeometry(
-                    0.45,
-                    32,
-                    32
-                );
-
-
-            const ballMaterial1 =
-                new THREE.MeshStandardMaterial({
-                    color: 0xff5555
-                });
-
-            const ballMaterial2 =
-                new THREE.MeshStandardMaterial({
-                    color: 0x5555ff
-                });
-
-
-            const ball1 =
-                new THREE.Mesh(
-                    ballGeometry,
-                    ballMaterial1
-                );
-
-            const ball2 =
-                new THREE.Mesh(
-                    ballGeometry,
-                    ballMaterial2
-                );
-
-
-            ball1.position.set(
-                -1.5,
-                2,
-                0
-            );
-
-            ball2.position.set(
-                1.5,
-                2,
-                0
-            );
-
-
-            scene.add(ball1);
-            scene.add(ball2);
-
-
-            // ---------------------------------------------
-            // ANIMATION STATE
-            // ---------------------------------------------
-
-            let dropping = false;
-
-            let startTime = 0;
-
-            const startY = 2;
-
-            const groundY = -2.55;
-
-
-            // ---------------------------------------------
-            // DROP BUTTON
-            // ---------------------------------------------
-
-            document
-                .getElementById("dropButton")
-                .addEventListener(
-                    "click",
-                    () => {{
-
-                        ball1.position.y =
-                            startY;
-
-                        ball2.position.y =
-                            startY;
-
-                        dropping = true;
-
-                        startTime =
-                            performance.now();
-
-                    }}
-                );
-
-
-            // ---------------------------------------------
-            // ANIMATION LOOP
-            // ---------------------------------------------
-
-            function animate() {{
-
-                requestAnimationFrame(
-                    animate
-                );
-
-
-                if (dropping) {{
-
-                    const elapsed =
-                        (
-                            performance.now()
-                            - startTime
-                        ) / 1000;
-
-
-                    // Simple educational
-                    // gravity visualization.
-                    const g = 9.8;
-
-
-                    let distance =
-                        0.5 * g *
-                        elapsed *
-                        elapsed;
-
-
-                    // Scale real-world
-                    // distance to scene.
-                    let visualDistance =
-                        distance * 0.45;
-
-
-                    let newY =
-                        startY
-                        - visualDistance;
-
-
-                    if (
-                        newY <= groundY
-                    ) {{
-
-                        newY =
-                            groundY;
-
-                        dropping = false;
-
-                    }}
-
-
-                    // Both objects receive
-                    // the same gravitational
-                    // acceleration.
-
-                    ball1.position.y =
-                        newY;
-
-                    ball2.position.y =
-                        newY;
-
-                }}
-
-
-                renderer.render(
-                    scene,
-                    camera
-                );
-
-            }}
-
-
-            animate();
-
-
-            // ---------------------------------------------
-            // RESPONSIVE
-            // ---------------------------------------------
-
-            window.addEventListener(
-                "resize",
-                () => {{
-
-                    camera.aspect =
-                        window.innerWidth
-                        / 520;
-
-                    camera.updateProjectionMatrix();
-
-                    renderer.setSize(
-                        window.innerWidth,
-                        520
-                    );
-
-                }}
-            );
-
-        </script>
-
-    </body>
-
-    </html>
-    """
-
-
-    st.components.v1.html(
-        simulation_html,
-        height=540,
-        scrolling=False
-    )
-
-
-    st.info(
-        "💡 Change the experiment values and press "
-        "'Drop Balls' to observe the simulation."
-    )
-
-
-else:
-
-    st.info(
-        "The AI generated an experiment, but this "
-        "first 3D engine currently supports gravity/"
-        "falling-object experiments. The experiment "
-        "itself is still generated dynamically by the AI."
-    )
-
-
-# ---------------------------------------------------------
-# OBSERVATION
-# ---------------------------------------------------------
-
-st.header("👀 What did you observe?")
-
-observation = st.text_area(
-    "Describe what happened in the experiment:",
-    placeholder="Example: Both balls reached the ground at nearly the same time."
-)
-
-
-if st.button("🔎 Evaluate My Experiment"):
-
-    if not observation.strip():
-
-        st.warning(
-            "Please enter your observation first."
-        )
-
-    else:
-
-        try:
-
-            evaluation = (
-                orchestrator.evaluate_student_action(
-                    session.get("topic", ""),
-                    experiment,
-                    observation,
-                    st.session_state.prediction
+            st.caption(
+                config.get(
+                    "description",
+                    ""
                 )
             )
 
-            st.session_state.evaluation = evaluation
-
-            st.session_state.student_state.add_observation(
-                observation
-            )
-
-            st.session_state.student_state.add_evaluation(
-                evaluation
-            )
-
-            st.session_state.student_state.add_history(
-                {
-                    "prediction":
-                        st.session_state.prediction,
-
-                    "observation":
-                        observation,
-
-                    "experiment_values":
-                        current_values,
-
-                    "evaluation":
-                        evaluation
-                }
-            )
-
-        except Exception as error:
-
-            st.error(
-                "The experiment could not be evaluated."
-            )
-
-            st.error(str(error))
+    st.session_state.experiment_values = current_values
 
 
-# ---------------------------------------------------------
-# EVALUATION RESULT
-# ---------------------------------------------------------
+    # -----------------------------------------------------
+    # GENERIC 3D SIMULATION
+    # -----------------------------------------------------
 
-if st.session_state.evaluation:
+    st.header("🌐 3D Virtual Experiment")
 
-    evaluation = st.session_state.evaluation
+    simulation = experiment.get("simulation", {})
 
-    st.header("🧠 Evaluator Agent")
-
-    if evaluation.get("discovery"):
-        st.write(
-            f"**What you discovered:** "
-            f"{evaluation.get('discovery')}"
+    if not simulation:
+        st.warning(
+            "The Experiment Agent did not return a 3D "
+            "simulation specification."
         )
 
-    if evaluation.get("prediction_supported") is not None:
+    else:
 
-        if evaluation.get(
-            "prediction_supported"
-        ):
+        objects = simulation.get("objects", [])
+        relationships = simulation.get("relationships", [])
+        controls = simulation.get("controls", [])
+        actions = simulation.get("actions", [])
+        observations = simulation.get(
+            "visual_observations",
+            []
+        )
 
-            st.success(
-                "Your prediction was supported by "
-                "the observation."
+
+        # Safely convert AI data to JSON for JavaScript
+        simulation_json = json.dumps(
+            simulation,
+            ensure_ascii=False
+        )
+
+        values_json = json.dumps(
+            current_values,
+            ensure_ascii=False
+        )
+
+        title_json = json.dumps(
+            experiment.get(
+                "title",
+                "Science Experiment"
+            ),
+            ensure_ascii=False
+        )
+
+
+        # -------------------------------------------------
+        # GENERIC THREE.JS ENGINE
+        # -------------------------------------------------
+
+        simulation_html = f"""
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<style>
+
+body {{
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+}}
+
+#scene {{
+    width: 100%;
+    height: 520px;
+}}
+
+#info {{
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(255,255,255,0.92);
+    padding: 12px;
+    border-radius: 8px;
+    max-width: 340px;
+    z-index: 10;
+}}
+
+#action {{
+    margin-top: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="info">
+
+<strong id="experiment-title"></strong>
+
+<div id="description">
+Interactive 3D experiment
+</div>
+
+<button id="action">
+▶ Run Experiment
+</button>
+
+</div>
+
+<div id="scene"></div>
+
+
+<script type="module">
+
+import * as THREE from
+'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+
+const simulation =
+{simulation_json};
+
+
+const variableValues =
+{values_json};
+
+
+const experimentTitle =
+{title_json};
+
+
+document.getElementById(
+    "experiment-title"
+).textContent = experimentTitle;
+
+
+// -------------------------------------------------------
+// SCENE
+// -------------------------------------------------------
+
+const container =
+document.getElementById("scene");
+
+
+const scene =
+new THREE.Scene();
+
+
+scene.background =
+new THREE.Color(0xf0f4f8);
+
+
+const camera =
+new THREE.PerspectiveCamera(
+    45,
+    container.clientWidth /
+    container.clientHeight,
+    0.1,
+    1000
+);
+
+
+camera.position.set(
+    0,
+    5,
+    12
+);
+
+
+const renderer =
+new THREE.WebGLRenderer({
+    antialias: true
+});
+
+
+renderer.setSize(
+    container.clientWidth,
+    container.clientHeight
+);
+
+
+renderer.setPixelRatio(
+    window.devicePixelRatio
+);
+
+
+container.appendChild(
+    renderer.domElement
+);
+
+
+// -------------------------------------------------------
+// LIGHTING
+// -------------------------------------------------------
+
+const ambientLight =
+new THREE.AmbientLight(
+    0xffffff,
+    1.5
+);
+
+scene.add(
+    ambientLight
+);
+
+
+const directionalLight =
+new THREE.DirectionalLight(
+    0xffffff,
+    2
+);
+
+directionalLight.position.set(
+    5,
+    10,
+    8
+);
+
+scene.add(
+    directionalLight
+);
+
+
+// -------------------------------------------------------
+// GROUND
+// -------------------------------------------------------
+
+const groundGeometry =
+new THREE.PlaneGeometry(
+    20,
+    20
+);
+
+
+const groundMaterial =
+new THREE.MeshStandardMaterial({
+    color: 0xdfe6e9
+});
+
+
+const ground =
+new THREE.Mesh(
+    groundGeometry,
+    groundMaterial
+);
+
+
+ground.rotation.x =
+-Math.PI / 2;
+
+
+ground.position.y =
+-2;
+
+
+scene.add(
+    ground
+);
+
+
+// -------------------------------------------------------
+// OBJECT CREATION
+// -------------------------------------------------------
+
+const objectMeshes = {};
+
+
+function createGeometry(type, size) {{
+
+    const s =
+        Number(size) || 1;
+
+    if (type === "sphere") {{
+
+        return new THREE.SphereGeometry(
+            s,
+            32,
+            32
+        );
+
+    }}
+
+    if (type === "cylinder") {{
+
+        return new THREE.CylinderGeometry(
+            s,
+            s,
+            s * 2,
+            32
+        );
+
+    }}
+
+    if (type === "plane") {{
+
+        return new THREE.BoxGeometry(
+            s * 2,
+            0.1,
+            s * 2
+        );
+
+    }}
+
+    return new THREE.BoxGeometry(
+        s * 2,
+        s * 2,
+        s * 2
+    );
+}}
+
+
+function createObject(objectData, index) {{
+
+    const properties =
+        objectData.properties || {{}};
+
+    const geometry =
+        createGeometry(
+            objectData.type,
+            properties.size
+        );
+
+
+    const material =
+        new THREE.MeshStandardMaterial({{
+            color:
+                new THREE.Color(
+                    0.25 + (index * 0.13) % 0.6,
+                    0.45 + (index * 0.09) % 0.4,
+                    0.65 + (index * 0.07) % 0.3
+                )
+        }});
+
+
+    const mesh =
+        new THREE.Mesh(
+            geometry,
+            material
+        );
+
+
+    const position =
+        properties.position || {{}};
+
+
+    mesh.position.set(
+        Number(position.x) || 0,
+        Number(position.y) || 0,
+        Number(position.z) || 0
+    );
+
+
+    scene.add(
+        mesh
+    );
+
+
+    const id =
+        objectData.id ||
+        "object_" + index;
+
+
+    objectMeshes[id] =
+        mesh;
+
+}}
+
+
+// Create every AI-described object
+
+objects.forEach(
+    createObject
+);
+
+
+// -------------------------------------------------------
+// LABELS
+// -------------------------------------------------------
+
+function createLabel(text, position) {{
+
+    const canvas =
+        document.createElement("canvas");
+
+    const context =
+        canvas.getContext("2d");
+
+    canvas.width =
+        512;
+
+    canvas.height =
+        128;
+
+    context.fillStyle =
+        "white";
+
+    context.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    context.fillStyle =
+        "black";
+
+    context.font =
+        "28px Arial";
+
+    context.fillText(
+        text,
+        20,
+        70
+    );
+
+    const texture =
+        new THREE.CanvasTexture(
+            canvas
+        );
+
+    const material =
+        new THREE.SpriteMaterial({{
+            map: texture
+        }});
+
+    const sprite =
+        new THREE.Sprite(
+            material
+        );
+
+    sprite.scale.set(
+        4,
+        1,
+        1
+    );
+
+    sprite.position.copy(
+        position
+    );
+
+    scene.add(
+        sprite
+    );
+}}
+
+
+// Add labels
+
+objects.forEach(
+    (objectData, index) => {{
+
+        const id =
+            objectData.id ||
+            "object_" + index;
+
+        const mesh =
+            objectMeshes[id];
+
+        if (mesh && objectData.label) {{
+
+            createLabel(
+                objectData.label,
+                mesh.position.clone().add(
+                    new THREE.Vector3(
+                        0,
+                        1.2,
+                        0
+                    )
+                )
+            );
+
+        }}
+
+    }}
+);
+
+
+// -------------------------------------------------------
+// RELATIONSHIP LINES
+// -------------------------------------------------------
+
+relationships.forEach(
+    relationship => {{
+
+        const source =
+            objectMeshes[
+                relationship.source
+            ];
+
+        const target =
+            objectMeshes[
+                relationship.target
+            ];
+
+        if (
+            source &&
+            target
+        ) {{
+
+            const points = [
+                source.position.clone(),
+                target.position.clone()
+            ];
+
+            const geometry =
+                new THREE.BufferGeometry()
+                    .setFromPoints(
+                        points
+                    );
+
+            const material =
+                new THREE.LineBasicMaterial({{
+                    color: 0x555555
+                }});
+
+            const line =
+                new THREE.Line(
+                    geometry,
+                    material
+                );
+
+            scene.add(
+                line
+            );
+
+        }}
+
+    }}
+);
+
+
+// -------------------------------------------------------
+// RUN EXPERIMENT
+// -------------------------------------------------------
+
+let running = false;
+
+const button =
+document.getElementById(
+    "action"
+);
+
+
+button.onclick = () => {{
+
+    running =
+        !running;
+
+    button.textContent =
+        running
+        ? "⏸ Pause Experiment"
+        : "▶ Run Experiment";
+
+}};
+
+
+// -------------------------------------------------------
+// ANIMATION
+// -------------------------------------------------------
+
+const clock =
+new THREE.Clock();
+
+
+function animate() {{
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const time =
+        clock.getElapsedTime();
+
+
+    if (running) {{
+
+        objects.forEach(
+            (objectData, index) => {{
+
+                const id =
+                    objectData.id ||
+                    "object_" + index;
+
+                const mesh =
+                    objectMeshes[id];
+
+                if (!mesh) return;
+
+
+                /*
+                 Generic educational motion.
+
+                 The AI describes the experiment,
+                 while the renderer provides a
+                 simple interactive movement.
+
+                 This is intentionally conservative:
+                 it does not execute AI-generated code.
+                */
+
+                mesh.rotation.y =
+                    time * 0.4;
+
+            }}
+        );
+
+    }}
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+}}
+
+
+animate();
+
+
+// -------------------------------------------------------
+// RESPONSIVE RESIZE
+// -------------------------------------------------------
+
+window.addEventListener(
+    "resize",
+    () => {{
+
+        camera.aspect =
+            container.clientWidth /
+            container.clientHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            container.clientWidth,
+            container.clientHeight
+        );
+
+    }}
+);
+
+</script>
+
+</body>
+
+</html>
+"""
+
+
+        components.html(
+            simulation_html,
+            height=550,
+            scrolling=False
+        )
+
+
+        # -------------------------------------------------
+        # AI SIMULATION DESCRIPTION
+        # -------------------------------------------------
+
+        if controls:
+
+            st.subheader(
+                "🎛️ What the AI says the controls do"
+            )
+
+            for control in controls:
+
+                st.write(
+                    f"**{control.get('variable', '')}:** "
+                    f"{control.get('effect', '')}"
+                )
+
+
+        if actions:
+
+            st.subheader(
+                "🖐️ Student Actions"
+            )
+
+            for action in actions:
+
+                st.write(
+                    f"• **{action.get('name', '')}:** "
+                    f"{action.get('description', '')}"
+                )
+
+
+        if observations:
+
+            st.subheader(
+                "👀 What to Observe"
+            )
+
+            for observation in observations:
+
+                st.write(
+                    f"• {observation}"
+                )
+
+
+    # -----------------------------------------------------
+    # OBSERVATION
+    # -----------------------------------------------------
+
+    st.header("🔎 Student Observation")
+
+    observation = st.text_area(
+        "What did you observe in the experiment?",
+        key="observation_input"
+    )
+
+
+    if st.button("🧠 Evaluate My Observation"):
+
+        if not observation.strip():
+
+            st.warning(
+                "Please describe your observation first."
             )
 
         else:
 
-            st.info(
-                "Your prediction was not fully supported. "
-                "That's okay — experiments help us learn."
+            with st.spinner(
+                "Evaluator Agent is analyzing your observation..."
+            ):
+
+                try:
+
+                    evaluation =
+                        orchestrator.evaluate_student_action(
+                            topic,
+                            experiment,
+                            observation,
+                            st.session_state.prediction
+                        )
+
+                    st.session_state.evaluation =
+                        evaluation
+
+                    st.session_state.student_state.add_observation(
+                        observation
+                    )
+
+                    st.session_state.student_state.add_evaluation(
+                        evaluation
+                    )
+
+                except Exception as error:
+
+                    st.error(
+                        f"Evaluation failed: {error}"
+                    )
+
+
+    # -----------------------------------------------------
+    # EVALUATION RESULT
+    # -----------------------------------------------------
+
+    evaluation =
+        st.session_state.evaluation
+
+    if evaluation:
+
+        st.header("🧠 Evaluator Agent")
+
+        st.write(
+            f"**Observation valid:** "
+            f"{evaluation.get('observation_valid', '')}"
+        )
+
+        st.write(
+            f"**Discovery:** "
+            f"{evaluation.get('discovery', '')}"
+        )
+
+        st.write(
+            f"**Prediction supported:** "
+            f"{evaluation.get('prediction_supported', '')}"
+        )
+
+        if evaluation.get("misconception"):
+
+            st.write(
+                f"**Possible misconception:** "
+                f"{evaluation.get('misconception', '')}"
             )
 
-    if evaluation.get("misconception"):
-        st.write(
-            f"**Possible misconception:** "
-            f"{evaluation.get('misconception')}"
-        )
-
-    if evaluation.get("next_action"):
         st.write(
             f"**Next action:** "
-            f"{evaluation.get('next_action')}"
-        )
-
-    if evaluation.get("next_question"):
-        st.write(
-            f"### 🔄 Next Question"
+            f"{evaluation.get('next_action', '')}"
         )
 
         st.write(
-            evaluation.get("next_question")
+            f"**Next question:** "
+            f"{evaluation.get('next_question', '')}"
         )
 
 
-# ---------------------------------------------------------
-# EXPERIMENT RULES
-# ---------------------------------------------------------
+    # -----------------------------------------------------
+    # EXPERIMENT RULES
+    # -----------------------------------------------------
 
-if experiment.get("rules"):
+    if experiment.get("rules"):
 
-    with st.expander("⚙️ Experiment Rules"):
+        st.header("📐 Experiment Rules")
 
         for rule in experiment["rules"]:
-            st.write(f"- {rule}")
+
+            st.write(
+                f"• {rule}"
+            )
