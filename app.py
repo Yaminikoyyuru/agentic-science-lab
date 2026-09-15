@@ -888,8 +888,7 @@ if st.button(
 # SESSION DISPLAY
 # =========================================================
 
-session_data =
-    st.session_state.session_data
+session_data = st.session_state.session_data
 
 
 if session_data:
