@@ -986,14 +986,12 @@ if session_data:
     )
 
 
-    option_a =
-        teacher.get(
+    option_a =  teacher.get(
             "option_a",
             ""
         )
 
-    option_b =
-        teacher.get(
+    option_b =  teacher.get(
             "option_b",
             ""
         )
