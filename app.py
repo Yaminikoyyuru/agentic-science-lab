@@ -836,11 +836,9 @@ if st.button(
 
     st.session_state.session_data = None
 
-    st.session_state.prediction =
-        ""
+    st.session_state.prediction =  ""
 
-    st.session_state.evaluation =
-        None
+    st.session_state.evaluation = None
 
 
     with st.spinner(
