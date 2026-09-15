@@ -847,8 +847,7 @@ if st.button(
 
         try:
 
-            session_data =
-                orchestrator.start_learning_session(
+            session_data = orchestrator.start_learning_session(
                     topic.strip()
                 )
 
