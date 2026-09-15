@@ -832,8 +832,7 @@ if st.button(
         st.stop()
 
 
-    st.session_state.student_state =
-        StudentState()
+    st.session_state.student_state = StudentState()
 
     st.session_state.session_data =
         None
