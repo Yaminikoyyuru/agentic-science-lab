@@ -834,8 +834,7 @@ if st.button(
 
     st.session_state.student_state = StudentState()
 
-    st.session_state.session_data =
-        None
+    st.session_state.session_data = None
 
     st.session_state.prediction =
         ""
