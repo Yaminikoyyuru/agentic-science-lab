@@ -898,14 +898,12 @@ if session_data:
             {}
         )
 
-    teacher =
-        session_data.get(
+    teacher =  session_data.get(
             "teacher",
             {}
         )
 
-    experiment =
-        session_data.get(
+    experiment = session_data.get(
             "experiment",
             {}
         )
