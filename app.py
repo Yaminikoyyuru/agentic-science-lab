@@ -1020,8 +1020,7 @@ if session_data:
             selected_letter = "B"
 
 
-        correct =
-            teacher.get(
+        correct =   teacher.get(
                 "correct_option",
                 ""
             )
