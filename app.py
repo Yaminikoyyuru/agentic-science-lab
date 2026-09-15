@@ -893,8 +893,7 @@ session_data = st.session_state.session_data
 
 if session_data:
 
-    science =
-        session_data.get(
+    science =   session_data.get(
             "science",
             {}
         )
