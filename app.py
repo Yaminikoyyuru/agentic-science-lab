@@ -865,12 +865,10 @@ if st.button(
                 st.stop()
 
 
-            st.session_state.session_data =
-                session_data
+            st.session_state.session_data = session_data
 
 
-            st.session_state.student_state.topic =
-                topic.strip()
+            st.session_state.student_state.topic = topic.strip()
 
 
         except Exception as error:
