@@ -1,4 +1,3 @@
-````python
 import json
 
 from tools.calculator import calculate
@@ -158,10 +157,4 @@ Use exactly this structure:
             return {
                 "error": f"Science Agent error: {error}"
             }
-````
 
-**Important:** GitHub lo **only `agents/science_agent.py`** replace cheyyi. `app.py`, `orchestrator.py` ippudu touch cheyyaku.
-
-After saving, Streamlit redeploy ayyaka same topic tho **Start Learning Session** test cheyyi. Ippudu error vaste, raw Gemini response kuda UI lo chupinchagalugutam, so next issue exact ga identify cheyyachu.
-
-Also, this fixes the **JSON parsing robustness**; it does not yet address the separate `google.generativeai` deprecation warning.
