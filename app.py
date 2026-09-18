@@ -14,7 +14,7 @@ else:
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(page_title="Agentic AI 3D Kids Lab", layout="centered")
-st.title("🧠 Agentic AI 3D Kids Science Lab")
+st.title("🤔 Curio3D AI ")
 st.write("An Interactive 3D Simulation Science Game Powered by AI Agents")
 
 # Initialize robust session states
