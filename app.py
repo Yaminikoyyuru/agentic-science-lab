@@ -10,7 +10,7 @@ else:
     st.error("Missing Gemini API Key. Please add it to your Streamlit Secrets Management dashboard.")
     st.stop()
 
-# Configuration for the latest 2026 Frontier Models
+# Configuration for the latest Frontier Models
 genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(page_title="Agentic AI 3D Kids Lab", layout="centered")
@@ -45,7 +45,11 @@ if st.button("🚀 Ask a New Question"):
         st.session_state.show_simulation = False
         st.session_state.q_counter += 1  
         
-        model = genai.GenerativeModel('gemini-3.6-flash')
+        # Enforcing clean text output for questions
+        model = genai.GenerativeModel(
+            'gemini-3.6-flash',
+            system_instruction="You are an expert K-12 science educator. Always output response exactly in the requested format."
+        )
         
         prompt = f"""
         You are an advanced Agentic K-12 Science Educator AI. Create a highly engaging, conceptual science question suitable for a 10-year-old child (Grade 4-6 level) about the topic: '{topic}'.
@@ -90,32 +94,43 @@ if st.session_state.question:
         else:
             st.error("❌ Oops! Incorrect answer. But explore the 3D physics simulation below to learn why!")
             
-        model = genai.GenerativeModel('gemini-3.6-flash')
+        # Enforcing raw code output via system_instruction to guarantee no markdown backticks
+        model = genai.GenerativeModel(
+            'gemini-3.6-flash',
+            system_instruction="You are a raw code generator. Never wrap your responses in markdown code blocks like ```html. Output only the pure HTML/JavaScript code text."
+        )
         
         with st.spinner("🎬 AI Agent is autonomously rendering your clean 3D simulation... Please wait!"):
             animation_prompt = f"""
-            Generate a single, complete HTML page that imports Three.js and OrbitControls via CDN to render a fully functional, visible, and interactive 3D physics simulation.
+            Generate a single, complete HTML page that imports Three.js (via https://cloudflare.com) and OrbitControls (via https://jsdelivr.net) to render a fully functional, visible, and interactive 3D physics simulation.
             Topic: '{topic}', Student Choice: '{user_choice}'.
             
-            STRICT VISUAL REQUIREMENTS:
-            1. K-12 SIMPLICITY: The 3D scene must be visually intuitive for a 10-year-old child. Use bright, vibrant, cartoonish colors.
-            2. NO COLLEGE COMPLEXITY: If the topic is complex (like Quantum Mechanics), render basic cartoonish spheres bouncing or moving like simple atoms/particles. Do NOT show complex mathematical graphs, wave distributions, or text blocks.
-            3. STRICTLY NO TEXT OVERLAYS: Do NOT write any HTML headers, paragraphs, or explanations outside the canvas. Only the raw 3D scene and absolute-positioned functional buttons are allowed.
-            4. INTERACTION: Create small, neat control buttons (e.g., "Animate", "Reset") absolute positioned at the bottom. Write explicit JS Event Listeners so clicking them visibly alters mesh parameters (position, speed, or rotation) inside the `requestAnimationFrame` loop.
-            5. LIGHTING & FRAMING: Center the 3D objects perfectly. Ensure ambient and directional lights are active so nothing is pitch black.
+            STRICT TECHNICAL & VISUAL REQUIREMENTS (To prevent blank screens):
+            1. GUARANTEED VISIBILITY: Set a clear, dark background color for the renderer (e.g., `renderer.setClearColor(0x1a1a2e, 1);`) so objects are sharply visible.
+            2. LIGHTING & COLOR: Add BOTH a strong `AmbientLight(0xffffff, 0.8)` and a `DirectionalLight(0xffffff, 1.0)` positioned at (5, 10, 7) so all 3D meshes are perfectly lit and colorful.
+            3. CAMERA POSITIONING: Position the camera close enough to see the action perfectly (e.g., `camera.position.set(0, 5, 10);`) and ensure `camera.lookAt(0,0,0)` or `controls.update()` is called properly.
+            4. K-12 SIMPLICITY: Use bright, vibrant, cartoonish colors for materials (MeshStandardMaterial or MeshPhongMaterial). For complex topics, just bounce, scale or rotate shiny spheres/cubes.
+            5. NO TEXT OVERLAYS: Do NOT write any HTML headers, paragraphs, or explanations outside the canvas. Only the raw 3D canvas and absolute-positioned functional buttons are allowed at the bottom.
+            6. INTERACTION: Setup clear HTML control buttons (e.g., "Animate", "Reset") absolute positioned at the bottom, and add explicit JS event listeners to mutate object parameters (position, speed, or rotation) instantly.
             
-            Return ONLY valid, raw HTML/JavaScript code inside a container. No markdown, no triple backticks. Just raw HTML code.
+            Return ONLY valid, raw HTML/JavaScript code. No markdown, no triple backticks. Just raw HTML code.
             """
             try:
                 html_code = model.generate_content(animation_prompt).text
                 
-                if "```html" in html_code:
-                    html_code = html_code.split("```html").split("```").strip()
-                elif "```" in html_code:
-                    html_code = html_code.split("```").split("```").strip()
-                else:
-                    html_code = html_code.strip()
+                # Robust string cleaning to strip any accidental markdown blocks safely (Bug Fixed)
+                html_code = html_code.strip()
+                if html_code.startswith("```html"):
+                    html_code = html_code.replace("```html", "", 1)
+                elif html_code.startswith("```"):
+                    html_code = html_code.replace("```", "", 1)
                     
+                if html_code.endswith("```"):
+                    html_code = html_code.rsplit("```", 1)[0]
+                    
+                html_code = html_code.strip()
+                    
+                # Rendering the cleaned HTML component with a fixed safe height
                 components.html(html_code, height=500)
             except ResourceExhausted:
                 st.warning("⚠️ API Rate Limit reached while rendering 3D. Please wait a minute and click 'Check Answer' again.")
